@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.swimming.mapper.SpFeedbackMapper">
+
+    <resultMap id="SpFeedbackVoResult" type="org.dromara.swimming.domain.vo.SpFeedbackVo">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="userName" column="user_name"/>
+        <result property="feedbackType" column="feedback_type"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="contactInfo" column="contact_info"/>
+        <result property="status" column="status"/>
+        <result property="handleUserId" column="handle_user_id"/>
+        <result property="handleUserName" column="handle_user_name"/>
+        <result property="handleResult" column="handle_result"/>
+        <result property="handleTime" column="handle_time"/>
+        <result property="satisfaction" column="satisfaction"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="selectVoList" resultMap="SpFeedbackVoResult">
+        SELECT
+            f.id,
+            f.user_id,
+            u.nick_name AS user_name,
+            f.feedback_type,
+            f.title,
+            f.content,
+            f.images,
+            f.contact_info,
+            f.status,
+            f.handle_user_id,
+            h.nick_name AS handle_user_name,
+            f.handle_result,
+            f.handle_time,
+            f.satisfaction,
+            f.remark,
+            f.create_time
+        FROM sp_feedback f
+        LEFT JOIN sys_user u ON f.user_id = u.user_id
+        LEFT JOIN sys_user h ON f.handle_user_id = h.user_id
+        <where>
+            <if test="ew.userId != null">
+                AND f.user_id = #{ew.userId}
+            </if>
+            <if test="ew.userName != null and ew.userName != ''">
+                AND u.nick_name LIKE CONCAT('%', #{ew.userName}, '%')
+            </if>
+            <if test="ew.feedbackType != null and ew.feedbackType != ''">
+                AND f.feedback_type = #{ew.feedbackType}
+            </if>
+            <if test="ew.title != null and ew.title != ''">
+                AND f.title LIKE CONCAT('%', #{ew.title}, '%')
+            </if>
+            <if test="ew.status != null and ew.status != ''">
+                AND f.status = #{ew.status}
+            </if>
+            <if test="ew.handleUserId != null">
+                AND f.handle_user_id = #{ew.handleUserId}
+            </if>
+        </where>
+        ORDER BY f.create_time DESC
+    </select>
+
+    <select id="selectVoPage" resultMap="SpFeedbackVoResult">
+        SELECT
+            f.id,
+            f.user_id,
+            u.nick_name AS user_name,
+            f.feedback_type,
+            f.title,
+            f.content,
+            f.images,
+            f.contact_info,
+            f.status,
+            f.handle_user_id,
+            h.nick_name AS handle_user_name,
+            f.handle_result,
+            f.handle_time,
+            f.satisfaction,
+            f.remark,
+            f.create_time
+        FROM sp_feedback f
+        LEFT JOIN sys_user u ON f.user_id = u.user_id
+        LEFT JOIN sys_user h ON f.handle_user_id = h.user_id
+        ${ew.customSqlSegment}
+        ORDER BY f.create_time DESC
+    </select>
+
+    <select id="selectVoById" resultMap="SpFeedbackVoResult">
+        SELECT
+            f.id,
+            f.user_id,
+            u.nick_name AS user_name,
+            f.feedback_type,
+            f.title,
+            f.content,
+            f.images,
+            f.contact_info,
+            f.status,
+            f.handle_user_id,
+            h.nick_name AS handle_user_name,
+            f.handle_result,
+            f.handle_time,
+            f.satisfaction,
+            f.remark,
+            f.create_time
+        FROM sp_feedback f
+        LEFT JOIN sys_user u ON f.user_id = u.user_id
+        LEFT JOIN sys_user h ON f.handle_user_id = h.user_id
+        WHERE f.id = #{id}
+    </select>
+
+</mapper>

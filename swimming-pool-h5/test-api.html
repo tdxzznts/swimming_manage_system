@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #05BFDB;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0A4D68;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #05BFDB;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success { border-left-color: #52c41a; }
+        .error { border-left-color: #f5222d; }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>游泳馆H5 API测试</h1>
+
+    <div class="test-section">
+        <h3>1. 发送邮箱验证码</h3>
+        <input type="email" id="email" placeholder="邮箱地址" value="17329460387@qq.com">
+        <button onclick="testSendCode()">发送验证码</button>
+        <div id="result1" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. 用户注册</h3>
+        <input type="text" id="username" placeholder="用户名" value="testuser001">
+        <input type="email" id="regEmail" placeholder="邮箱" value="17329460387@qq.com">
+        <input type="text" id="code" placeholder="验证码" value="123456">
+        <input type="password" id="password" placeholder="密码" value="Test123456">
+        <input type="password" id="confirmPassword" placeholder="确认密码" value="Test123456">
+        <button onclick="testRegister()">注册</button>
+        <div id="result2" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. 用户登录</h3>
+        <input type="text" id="loginAccount" placeholder="账号" value="testuser001">
+        <input type="password" id="loginPassword" placeholder="密码" value="Test123456">
+        <button onclick="testLogin()">登录</button>
+        <div id="result3" class="result"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8080';
+
+        async function testSendCode() {
+            const email = document.getElementById('email').value;
+            const resultDiv = document.getElementById('result1');
+            resultDiv.textContent = '发送中...';
+            resultDiv.className = 'result';
+
+            try {
+                const response = await fetch(`${BASE_URL}/h5/auth/sendEmailCode?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                resultDiv.textContent = `状态: ${response.status}\n` + JSON.stringify(data, null, 2);
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testRegister() {
+            const resultDiv = document.getElementById('result2');
+            resultDiv.textContent = '注册中...';
+            resultDiv.className = 'result';
+
+            const data = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('regEmail').value,
+                verifyCode: document.getElementById('code').value,
+                password: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirmPassword').value
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/h5/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                resultDiv.textContent = `状态: ${response.status}\n` + JSON.stringify(result, null, 2);
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+            } catch (error) {
+                resultDiv.textContent = `错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('result3');
+            resultDiv.textContent = '登录中...';
+            resultDiv.className = 'result';
+
+            const data = {
+                account: document.getElementById('loginAccount').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/h5/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                resultDiv.textContent = `状态: ${response.status}\n` + JSON.stringify(result, null, 2);
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+
+                // 如果登录成功，保存token
+                if (result.code === 200 && result.data?.token) {
+                    localStorage.setItem('test_token', result.data.token);
+                    resultDiv.textContent += '\n\nToken已保存到 localStorage';
+                }
+            } catch (error) {
+                resultDiv.textContent = `错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html>

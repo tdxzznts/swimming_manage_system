@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册调试页面</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #0A4D68 0%, #05BFDB 50%, #F0F8FF 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(10, 77, 104, 0.2);
+        }
+        h1 { color: #0A4D68; margin-bottom: 20px; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; color: #0A4D68; font-weight: 500; margin-bottom: 5px; }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        input:focus { border-color: #05BFDB; outline: none; }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #05BFDB 0%, #0A4D68 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(5, 191, 219, 0.3); }
+        button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            font-size: 13px;
+            display: none;
+        }
+        .result.show { display: block; }
+        .success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .code-btn {
+            background: linear-gradient(135deg, #05BFDB 0%, #0A4D68 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 5px;
+            width: auto;
+        }
+        .code-btn:disabled { background: #ccc; }
+        .input-group { display: flex; gap: 10px; }
+        .input-group input { flex: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>注册功能测试</h1>
+
+        <form id="registerForm" onsubmit="return false;">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="username" placeholder="4-20位字母数字" value="testuser888" required>
+            </div>
+
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="email" placeholder="请输入邮箱" value="17329460387@qq.com" required>
+            </div>
+
+            <div class="form-group">
+                <label>验证码</label>
+                <div class="input-group">
+                    <input type="text" id="verifyCode" placeholder="6位验证码" value="123456" required>
+                    <button type="button" class="code-btn" id="codeBtn" onclick="sendCode()">发送验证码</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="password" placeholder="至少6位，包含大小写字母和数字" value="Test123456" required>
+            </div>
+
+            <div class="form-group">
+                <label>确认密码</label>
+                <input type="password" id="confirmPassword" placeholder="再次输入密码" value="Test123456" required>
+            </div>
+
+            <button type="submit" onclick="register()">注册</button>
+        </form>
+
+        <div id="result" class="result"></div>
+
+        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 10px; font-size: 12px;">
+            <strong>💡 调试提示：</strong><br>
+            1. 打开浏览器开发者工具 (F12)<br>
+            2. 查看Console标签页的输出<br>
+            3. 查看Network标签页的请求详情<br>
+            4. 验证码会存储在Redis中，有效期5分钟
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';
+
+        async function sendCode() {
+            const email = document.getElementById('email').value;
+            const codeBtn = document.getElementById('codeBtn');
+            const resultDiv = document.getElementById('result');
+
+            if (!email) {
+                showResult('请输入邮箱地址', 'error');
+                return;
+            }
+
+            codeBtn.disabled = true;
+            codeBtn.textContent = '发送中...';
+            resultDiv.className = 'result';
+
+            try {
+                console.log('📤 发送验证码请求:', `/h5/auth/sendEmailCode?email=${email}`);
+
+                const response = await fetch(`${API_BASE}/h5/auth/sendEmailCode?email=${encodeURIComponent(email)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                console.log('📥 发送验证码响应:', data);
+
+                if (data.code === 200) {
+                    showResult(`✅ 验证码发送成功！\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                    startCountdown();
+                } else {
+                    showResult(`❌ 发送失败：${data.msg}\n\n${JSON.stringify(data, null, 2)}`, 'error');
+                    codeBtn.disabled = false;
+                    codeBtn.textContent = '发送验证码';
+                }
+            } catch (error) {
+                console.error('❌ 发送验证码错误:', error);
+                showResult(`❌ 网络错误：${error.message}\n\n请确保后端服务已启动（http://localhost:8080）`, 'error');
+                codeBtn.disabled = false;
+                codeBtn.textContent = '发送验证码';
+            }
+        }
+
+        function startCountdown() {
+            const codeBtn = document.getElementById('codeBtn');
+            let countdown = 60;
+
+            const timer = setInterval(() => {
+                codeBtn.textContent = `${countdown}秒后重试`;
+                countdown--;
+
+                if (countdown < 0) {
+                    clearInterval(timer);
+                    codeBtn.disabled = false;
+                    codeBtn.textContent = '发送验证码';
+                }
+            }, 1000);
+        }
+
+        async function register() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result';
+
+            const formData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                verifyCode: document.getElementById('verifyCode').value,
+                password: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirmPassword').value
+            };
+
+            // 前端验证
+            if (formData.username.length < 4 || formData.username.length > 20) {
+                showResult('❌ 用户名长度必须为4-20位', 'error');
+                return;
+            }
+
+            if (formData.password.length < 6) {
+                showResult('❌ 密码长度不能少于6位', 'error');
+                return;
+            }
+
+            if (formData.password !== formData.confirmPassword) {
+                showResult('❌ 两次密码输入不一致', 'error');
+                return;
+            }
+
+            console.log('📤 注册请求:', formData);
+
+            try {
+                const response = await fetch(`${API_BASE}/h5/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                console.log('📥 注册响应:', data);
+
+                if (data.code === 200) {
+                    showResult(`✅ 注册成功！\n\n${JSON.stringify(data, null, 2)}\n\n请前往登录页面登录`, 'success');
+                    // 3秒后跳转到登录页面
+                    setTimeout(() => {
+                        if (confirm('注册成功！是否跳转到登录页面？')) {
+                            window.location.href = 'http://localhost:5173/login';
+                        }
+                    }, 2000);
+                } else {
+                    showResult(`❌ 注册失败：${data.msg}\n\n${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                console.error('❌ 注册错误:', error);
+                showResult(`❌ 网络错误：${error.message}\n\n请确保后端服务已启动`, 'error');
+            }
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result show ${type}`;
+            console.log(message);
+        }
+
+        // 页面加载时检查后端连接
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/h5/auth/getUserInfo`);
+                console.log('✅ 后端服务连接正常，状态:', response.status);
+            } catch (error) {
+                console.error('❌ 无法连接到后端服务:', error);
+                showResult('⚠️ 警告：无法连接到后端服务\n\n请确保后端服务已启动在 http://localhost:8080', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

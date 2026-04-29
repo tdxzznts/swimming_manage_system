@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.swimming.mapper.SpIotDeviceDataMapper">
+
+    <resultMap id="BaseResultMap" type="org.dromara.swimming.domain.SpIotDeviceData">
+        <id property="id" column="id"/>
+        <result property="deviceKey" column="device_key"/>
+        <result property="topic" column="topic"/>
+        <result property="method" column="method"/>
+        <result property="params" column="params"/>
+        <result property="timestamp" column="timestamp"/>
+        <result property="collectTime" column="collect_time"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <resultMap id="SpIotDeviceDataVoResult" type="org.dromara.swimming.domain.vo.SpIotDeviceDataVo" extends="BaseResultMap">
+        <result property="deviceName" column="device_name"/>
+        <result property="productName" column="product_name"/>
+    </resultMap>
+
+    <!-- 查询设备最新数据 -->
+    <select id="getLatestData" resultMap="SpIotDeviceDataVoResult">
+        SELECT
+            d.*,
+            dev.device_name,
+            p.product_name
+        FROM sp_iot_device_data d
+        LEFT JOIN sp_iot_device dev ON d.device_key = dev.device_key
+        LEFT JOIN sp_iot_product p ON dev.product_key = p.product_key
+        WHERE d.device_key = #{deviceKey}
+        ORDER BY d.collect_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 查询设备历史数据 -->
+    <select id="queryHistoryData" resultMap="SpIotDeviceDataVoResult">
+        SELECT
+            d.*,
+            dev.device_name,
+            p.product_name
+        FROM sp_iot_device_data d
+        LEFT JOIN sp_iot_device dev ON d.device_key = dev.device_key
+        LEFT JOIN sp_iot_product p ON dev.product_key = p.product_key
+        WHERE d.device_key = #{deviceKey}
+        <if test="startTime != null">
+            AND d.collect_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND d.collect_time &lt;= #{endTime}
+        </if>
+        ORDER BY d.collect_time DESC
+    </select>
+
+    <!-- 批量插入设备数据 -->
+    <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sp_iot_device_data (
+            device_key, topic, method, params, timestamp, collect_time, create_time
+        ) VALUES
+        <foreach collection="dataList" item="item" separator=",">
+            (
+                #{item.deviceKey},
+                #{item.topic},
+                #{item.method},
+                #{item.params},
+                #{item.timestamp},
+                #{item.collectTime},
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+</mapper>

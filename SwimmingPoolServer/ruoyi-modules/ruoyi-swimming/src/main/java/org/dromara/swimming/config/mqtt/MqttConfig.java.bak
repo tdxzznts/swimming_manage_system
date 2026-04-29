@@ -1,0 +1,100 @@
+package org.dromara.swimming.config.mqtt;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.core.MessageProducer;
+import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
+import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
+import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
+import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.MessagingException;
+
+/**
+ * MQTT配置类
+ *
+ * @author swimming
+ * @date 2026-02-08
+ */
+@Slf4j
+@Configuration
+@RequiredArgsConstructor
+public class MqttConfig {
+
+    private final MqttProperties mqttProperties;
+
+    /**
+     * MQTT客户端工厂
+     */
+    @Bean
+    public MqttPahoClientFactory mqttClientFactory() {
+        DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
+        MqttConnectOptions options = new MqttConnectOptions();
+
+        options.setServerURIs(new String[]{mqttProperties.getHost()});
+        options.setUserName(mqttProperties.getUsername());
+        options.setPassword(mqttProperties.getPassword().toCharArray());
+        options.setConnectionTimeout(mqttProperties.getTimeout());
+        options.setKeepAliveInterval(mqttProperties.getKeepAlive());
+        options.setAutomaticReconnect(true);
+        options.setCleanSession(true);
+
+        factory.setConnectionOptions(options);
+        return factory;
+    }
+
+    /**
+     * MQTT入站消息通道
+     */
+    @Bean
+    public MessageChannel mqttInputChannel() {
+        return new DirectChannel();
+    }
+
+    /**
+     * MQTT消息处理器（由具体的Service实现）
+     */
+    @Bean
+    @ServiceActivator(inputChannel = "mqttInputChannel")
+    public MessageHandler mqttInboundMessageHandler() {
+        return new MessageHandler() {
+            @Override
+            public void handleMessage(Message<?> message) throws MessagingException {
+                String topic = (String) message.getHeaders().get("mqtt_topic");
+                String payload = new String((byte[]) message.getPayload());
+
+                log.info("收到MQTT消息 - Topic: {}, Payload: {}", topic, payload);
+
+                // 这里会在具体的Service中被覆盖
+                // 实际处理逻辑在MqttMessageHandler中
+            }
+        };
+    }
+
+    /**
+     * MQTT消息订阅适配器
+     */
+    @Bean
+    public MessageProducer inbound() {
+        MqttPahoMessageDrivenChannelAdapter adapter =
+            new MqttPahoMessageDrivenChannelAdapter(
+                mqttProperties.getClientId() + "_inbound",
+                mqttClientFactory(),
+                mqttProperties.getTopicPrefix()
+            );
+
+        adapter.setCompletionTimeout(mqttProperties.getTimeout() * 1000);
+        adapter.setConverter(new DefaultPahoMessageConverter());
+        adapter.setQos(1);
+        adapter.setOutputChannel(mqttInputChannel());
+
+        return adapter;
+    }
+}
